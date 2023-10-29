@@ -1,4 +1,4 @@
-use std::{env, fs, io};
+use std::{env, fs, io, os::unix::prelude::MetadataExt};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     //get current directory name
@@ -24,16 +24,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     //check if user input is ok
     match get_input {
-        Ok(_) => println!("Searching for {}", input_value),
+        Ok(_) => println!("Searching for: {}", input_value),
         Err(_) => println!("Error!"),
     }
 
-    let metadata = fs::metadata(&input_value.trim());
+    let dir = fs::read_dir(current_dir_name.unwrap())?;
 
-    match metadata {
-        Ok(value) => println!("from meta {:?}", value),
-        Err(e) => println!("Error: {}", e),
+    // println!("dir {:?}", dir.unwrap());
+
+    for el in dir {
+        let el = el?;
+        let path = el.path();
+
+        // let file_metadata = fs::metadata(&path)?;
+        // println!("from file_name : {}", file_metadata.is_file());
+        if path.is_file() {
+            let file = fs::metadata(&path)?;
+            println!("this is a file: name ->{:?} type -->{:?}  size ->{:?}", path.file_name().unwrap(), path.extension(), file.size());
+        }
+        if path.is_dir() {
+            println!("from is_dir: {:?}", path);
+        }
     }
+
+    // let metadata = fs::metadata(&input_value.trim().to_string());
+
+    // match metadata {
+    //     Ok(value) => println!("from meta {:?}", value.is_dir()),
+    //     Err(e) => println!("Error from metadata: {}", e),
+    // }
 
     Ok(())
 }
