@@ -1,5 +1,16 @@
 use std::{env, fs, io, os::unix::prelude::MetadataExt};
 
+enum File_type {
+    Dir,
+    File,
+}
+
+struct Found {
+    name: String,
+    size: usize,
+    value: File_type,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     //get current directory name
     let current_dir = env::current_dir().unwrap();
@@ -28,6 +39,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(_) => println!("Error!"),
     }
 
+    //Storeing all the found files and directory
+    let mut found_files: Vec<Found> = Vec::new();
+
     let dir = fs::read_dir(current_dir_name.unwrap())?;
 
     // println!("dir {:?}", dir.unwrap());
@@ -40,10 +54,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // println!("from file_name : {}", file_metadata.is_file());
         if path.is_file() {
             let file = fs::metadata(&path)?;
-            println!("this is a file: name ->{:?} type -->{:?}  size ->{:?}", path.file_name().unwrap(), path.extension(), file.size());
+            println!(
+                "this is a file: name ->{:?} type -->{:?}  size ->{:?}",
+                path.file_name().unwrap(),
+                path.extension(),
+                file.size()
+            );
         }
         if path.is_dir() {
             println!("from is_dir: {:?}", path);
+            search_directory(&path);
         }
     }
 
@@ -56,3 +76,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+
+
+//Recursive function for searching directory
+fn search_directory(dir: &std::path::PathBuf) -> Result<(), std::io::Error> {
+    let dir = fs::read_dir(dir)?;
+    for el in dir {
+        let el = el?;
+        let path = el.path();
+
+        if path.is_file() {
+            let file = fs::metadata(&path)?;
+            println!(
+                "this is a file: name ->{:?} type -->{:?}  size ->{:?}",
+                path.file_name().unwrap(),
+                path.extension(),
+                file.size()
+            );
+        }
+
+        if path.is_dir() {
+            println!("from is_dir: {:?}", path);
+            search_directory(&path);
+        }
+    }
+    Ok(())
+}
+
+
+
