@@ -1,4 +1,4 @@
-use std::{env, fs, io, os::unix::prelude::MetadataExt, thread};
+use std::{env, fs, io, os::unix::prelude::MetadataExt, sync::Arc, thread};
 
 enum File_type {
     Dir,
@@ -39,12 +39,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(_) => println!("Error!"),
     }
 
+    let new_arc_from_input = Arc::new(input_value.trim().to_string());
+
     //Storeing all the found files and directory
     let mut found_files: Vec<Found> = Vec::new();
 
     let dir = fs::read_dir(current_dir_name.unwrap())?;
 
     // println!("dir {:?}", dir.unwrap());
+
+    println!("{:?}", new_arc_from_input);
 
     for el in dir {
         let el = el?;
@@ -54,16 +58,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // println!("from file_name : {}", file_metadata.is_file());
         if path.is_file() {
             let file = fs::metadata(&path)?;
-            println!(
-                "this is a file: name ->{:?} type -->{:?}  size ->{:?}",
-                path.file_name().unwrap(),
-                path.extension(),
-                file.size()
-            );
+            if let Some(i) = path.file_name() {
+                if String::from(i.to_str().unwrap()).contains(new_arc_from_input.as_str()) {
+                    println!(
+                        "path ->{:?}   name ->{:?} type -->{:?}  size ->{:?}",
+                        path.canonicalize().unwrap(),
+                        i,
+                        path.extension(),
+                        file.size()
+                    );
+                }
+            }
         }
         if path.is_dir() {
-            println!("from is_dir: {:?}", path);
-            search_directory(&path);
+            // println!("from is_dir: {:?}", path);
+            search_directory(&path, new_arc_from_input.clone());
         }
     }
 
@@ -105,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 //     Ok(())
 // }
 
-fn search_directory(dir: &std::path::PathBuf) -> Result<(), std::io::Error> {
+fn search_directory(dir: &std::path::PathBuf, input: Arc<String>) -> Result<(), std::io::Error> {
     let dir = fs::read_dir(dir)?;
 
     let handles: Vec<thread::JoinHandle<Result<(), std::io::Error>>> = dir
@@ -116,15 +125,23 @@ fn search_directory(dir: &std::path::PathBuf) -> Result<(), std::io::Error> {
             if path.is_file() {
                 let file = fs::metadata(&path).unwrap();
 
-                println!(
-                    "this is a file: name ->{:?} type -->{:?}  size ->{:?}",
-                    path.file_name().unwrap(),
-                    path.extension(),
-                    file.size()
-                );
+                if let Some(i) = path.file_name() {
+                    if String::from(i.to_str().unwrap()).contains(input.as_str()) {
+                        println!(
+                            "path ->{:?}   name ->{:?} type -->{:?}  size ->{:?}",
+                            path.canonicalize().unwrap(),
+                            i,
+                            path.extension(),
+                            file.size()
+                        );
+                    }
+                }
             } else if path.is_dir() {
-                println!("from is_dir: {:?}", path);
-                return Some(thread::spawn(move || search_directory(&path)));
+                // println!("from is_dir: {:?}", path);
+                return Some(thread::spawn({
+                    let i = input.clone();
+                    move || search_directory(&path, i)
+                }));
             }
 
             None
