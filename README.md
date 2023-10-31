@@ -1,4 +1,4 @@
-#Multithreading simeple file search program
+# Multithreading simeple file search program
 
 ## Available Scripts
 
