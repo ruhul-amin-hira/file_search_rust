@@ -1,4 +1,4 @@
-use std::{env, fs, io, os::unix::prelude::MetadataExt};
+use std::{env, fs, io, os::unix::prelude::MetadataExt, thread};
 
 enum File_type {
     Dir,
@@ -77,32 +77,63 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// //Recursive function for searching directory
+// fn search_directory(dir: &std::path::PathBuf) -> Result<(), std::io::Error> {
+//     let dir = fs::read_dir(dir)?;
+//     let handle = thread::spawn(|| {
+//         for el in dir {
+//             let el = el.unwrap();
+//             let path = el.path();
 
+//             if path.is_file() {
+//                 let file = fs::metadata(&path).unwrap();
+//                 println!(
+//                     "this is a file: name ->{:?} type -->{:?}  size ->{:?}",
+//                     path.file_name().unwrap(),
+//                     path.extension(),
+//                     file.size()
+//                 );
+//             }
 
-//Recursive function for searching directory
+//             if path.is_dir() {
+//                 println!("from is_dir: {:?}", path);
+//                 search_directory(&path);
+//             }
+//         }
+//     });
+//     handle.join().unwrap();
+//     Ok(())
+// }
+
 fn search_directory(dir: &std::path::PathBuf) -> Result<(), std::io::Error> {
     let dir = fs::read_dir(dir)?;
-    for el in dir {
-        let el = el?;
-        let path = el.path();
 
-        if path.is_file() {
-            let file = fs::metadata(&path)?;
-            println!(
-                "this is a file: name ->{:?} type -->{:?}  size ->{:?}",
-                path.file_name().unwrap(),
-                path.extension(),
-                file.size()
-            );
-        }
+    let handles: Vec<thread::JoinHandle<Result<(), std::io::Error>>> = dir
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            let path = entry.path();
 
-        if path.is_dir() {
-            println!("from is_dir: {:?}", path);
-            search_directory(&path);
-        }
+            if path.is_file() {
+                let file = fs::metadata(&path).unwrap();
+
+                println!(
+                    "this is a file: name ->{:?} type -->{:?}  size ->{:?}",
+                    path.file_name().unwrap(),
+                    path.extension(),
+                    file.size()
+                );
+            } else if path.is_dir() {
+                println!("from is_dir: {:?}", path);
+                return Some(thread::spawn(move || search_directory(&path)));
+            }
+
+            None
+        })
+        .collect();
+
+    for handle in handles {
+        handle.join().unwrap()?;
     }
+
     Ok(())
 }
-
-
-
