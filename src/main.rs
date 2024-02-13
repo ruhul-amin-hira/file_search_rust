@@ -42,6 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let new_arc_from_input = Arc::new(input_value.trim().to_string());
 
     //Storeing all the found files and directory
+    //For later use
     let mut found_files: Vec<Found> = Vec::new();
 
     let dir = fs::read_dir(current_dir_name.unwrap())?;
